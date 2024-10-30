@@ -13,10 +13,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def main():
 
 
-    st.markdown('<h1 class="title">Welcome to our space!</h1>', unsafe_allow_html=True)
+    # st.markdown('<h1 class="title">Welcome to our space!</h1>', unsafe_allow_html=True)
 
     # Login screen
     if 'user_id' not in st.session_state:
+        st.markdown('<h1 class="title">Welcome to our space!</h1>', unsafe_allow_html=True)
         # st.markdown('<h3 class="subheader">Login</h3>', unsafe_allow_html=True)
         username = st.text_input("Username:")
         if st.button("Log In"):
@@ -30,9 +31,10 @@ def main():
     user_id = st.session_state['user_id']
     chatbot = Chatbot(user_id)
 
-    # Response tone selection
-    st.subheader("Response Tone Preference")
-    tone_choice = st.radio("Select response tone:", ["formal", "informal"], index=0 if chatbot.response_tone == "informal" else 1)
+    # #Response tone selection
+    # st.subheader("Response Tone Preference")
+    st.markdown('<h1 class="title">How can I assist you today!</h1>', unsafe_allow_html=True)
+    tone_choice = st.radio("Select response tone:", ["***Formal***", "***Informal***"], index=0 if chatbot.response_tone == "Informal" else 1)
     if st.button("Save Tone Preference"):
         chatbot.set_response_tone(tone_choice)
         st.success(f"Tone preference '{tone_choice}' saved.")

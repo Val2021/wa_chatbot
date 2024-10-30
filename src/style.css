@@ -59,7 +59,7 @@
 .title {
   font-size: 2em;
   color: #000000;
-  margin-right: 35%;
+  margin-right: -2%;
 }
 
 .subheader, .text {
@@ -101,4 +101,40 @@ input, label {
 
 .stTextInput > div > label {
   color: #000000 !important;
+}
+
+b, strong {
+  font-weight: 400;
+  color: black;
+  font-family: 'Source Sans Pro';
+}
+
+
+.custom-success {
+  background-color: #D4EDDA;
+  color: #155724;
+  padding: 10px;
+  border-radius: 5px;
+  font-weight: bold;
+  border: 1px solid #C3E6CB;
+}
+
+[data-testid="stAlertContainer"] {
+  color: #000000;
+  width: 60%;
+}
+
+.st-emotion-cache-nok2kl p {
+  word-break: break-word;
+  color: black;
+}
+
+[data-testid="stMarkdown"] {
+  width: 60%;
+}
+
+.st-emotion-cache-nok2kl {
+  font-family: "Source Sans Pro", sans-serif;
+  margin-bottom: -1rem;
+  width: 60%;
 }
