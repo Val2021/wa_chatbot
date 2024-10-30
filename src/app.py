@@ -2,22 +2,29 @@
 import streamlit as st
 import logging
 from main.bot import Chatbot
+import base64
+
+with open("src/style.css") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def main():
-    st.title("Interactive Chatbot")
+
+
+    st.markdown('<h1 class="title">Welcome to our space!</h1>', unsafe_allow_html=True)
 
     # Login screen
     if 'user_id' not in st.session_state:
-        st.subheader("Login")
+        # st.markdown('<h3 class="subheader">Login</h3>', unsafe_allow_html=True)
         username = st.text_input("Username:")
         if st.button("Log In"):
             st.session_state['user_id'] = username
             st.session_state['session_id'] = st.session_state.get('session_id', 0) + 1
             st.success(f"Welcome, {username}!")
             logging.info(f"User {username} logged in with session ID {st.session_state['session_id']}")
+            st.markdown('</div>', unsafe_allow_html=True)
         return
 
     user_id = st.session_state['user_id']
@@ -44,6 +51,28 @@ def main():
         st.session_state.clear()
         st.success("You have been logged out.")
         logging.info(f"User {user_id} logged out.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def get_img_as_base64(file):
+    with open(file,'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+img = get_img_as_base64("src/image.jpg")
+
+
+st.markdown(
+    f"""
+    <style>
+    .stAppViewContainer {{
+        background-image: url("data:image/jpg;base64,{img}");
+        background-size: cover;
+        background-position: 20%;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,104 @@
+.stButton > button {
+  color: #FFFFFF;
+  background-color: #092c6d;
+  font-size: 20px;
+  height: 60px;
+  width: 60%;
+}
+
+.stButton > button:hover {
+  color: #FFFFFF;
+  background-color: #789ce0;
+  font-size: 20px;
+  height: 60px;
+  width: 60%;
+}
+
+[data-testid="stTextInput"] {
+
+  font-size: 16px;
+  width: 60%;
+}
+
+
+[data-testid="stTextInput"] input {
+  background-color: #e6f2ff;
+  border: 2px solid #007BFF;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 16px;
+  color: #333;
+  width: 100%;
+}
+
+
+[data-testid="stTextInput"] input::placeholder {
+  color: #888;
+  opacity: 0.7;
+}
+
+
+#MainMenu {
+  visibility: hidden;
+}
+
+.stAppDeployButton {
+  visibility: hidden;
+}
+
+.stMarkdown {
+  text-align: center;
+}
+
+.container-right-align {
+  display: flex;
+  justify-content: flex-end;
+  margin-right: 9%;
+}
+
+.title {
+  font-size: 2em;
+  color: #000000;
+  margin-right: 35%;
+}
+
+.subheader, .text {
+  color: #000000;
+}
+
+.st-emotion-cache-13ln4jf {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  margin-left: 80%;
+  height: 50%;
+}
+
+.st-emotion-cache-bm2z3a {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: auto;
+  -webkit-box-align: center;
+  align-items: center;
+
+}
+
+.st-emotion-cache-h4xjwg {
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  height: 3.75rem;
+  background: rgb(238, 240, 245);
+  outline: none;
+  z-index: 999990;
+  display: block;
+}
+
+input, label {
+  color: #000000 !important;
+}
+
+.stTextInput > div > label {
+  color: #000000 !important;
+}
