@@ -8,7 +8,7 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class DatabaseManager:
-    def __init__(self, dimension=512, db_file='user_data.json'):
+    def __init__(self, dimension=768, db_file='user_data.json'):
         # Initializes the FAISS index for similarity search
         self.dimension = dimension
         self.index = faiss.IndexFlatL2(dimension)  # Index based on L2 distance
@@ -40,7 +40,8 @@ class DatabaseManager:
             self.user_data[user_id] = {"statements": [], "embeddings": [], "preferences": {}}
 
         self.user_data[user_id]["statements"].append(statement)
-        self.user_data[user_id]["embeddings"].append(embedding)
+        #self.user_data[user_id]["embeddings"].append(embedding)
+        self.user_data[user_id]["embeddings"].append(embedding.tolist())  # Convert  to list
         self.index.add(embedding)
         self.save_user_data()  # Save after each storage
         logging.info(f"Stored true statement for user {user_id}: {statement}")

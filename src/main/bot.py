@@ -31,6 +31,7 @@ class Chatbot:
         # Check and store only if the statement is true
         if self.verify_truth(user_input):
             embedding = create_embedding(user_input)
+            print(f"Generated embedding shape: {len(embedding)}")  # Deve imprimir 768
             self.db_manager.store_true_statement(self.user_id, user_input, embedding)
             logging.info(f"Stored true statement for user {self.user_id}: {user_input}")
         else:

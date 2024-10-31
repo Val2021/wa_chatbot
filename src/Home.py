@@ -4,7 +4,7 @@ import logging
 from main.bot import Chatbot
 import base64
 
-with open("style.css") as f:
+with open("src/style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Logging configuration
@@ -30,7 +30,7 @@ def main():
 
     # # #Response tone selection
     st.markdown('<h1 class="title">How can I assist you today!</h1>', unsafe_allow_html=True)
-    tone_choice = st.radio("Select response tone:", ["***Formal***", "***Informal***"], index=0 if chatbot.response_tone == "Informal" else 1)
+    tone_choice = st.radio("Select response tone:", ["formal", "informal"], index=0 if chatbot.response_tone == "informal" else 1)
     if tone_choice != chatbot.response_tone:
         chatbot.set_response_tone(tone_choice)
         st.success(f"Tone preference '{tone_choice}' saved.")
@@ -57,7 +57,7 @@ def get_img_as_base64(file):
         data = f.read()
     return base64.b64encode(data).decode()
 
-img = get_img_as_base64("image.jpg")
+img = get_img_as_base64("src/image.jpg")
 
 
 st.markdown(
