@@ -138,3 +138,30 @@ b, strong {
   margin-bottom: -1rem;
   width: 60%;
 }
+
+.st-emotion-cache-6qob1r {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: overlay;
+  background-color: turquoise;
+}
+
+.st-emotion-cache-1q2d4ya {
+  color: rgb(20 54 131);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: table-cell;
+  font-size: x-large;
+}
+
+.st-emotion-cache-1dj0hjr {
+  color:  rgb(20 54 131);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: table-cell;
+  color: blue;
+  font-size: x-large;
+}
