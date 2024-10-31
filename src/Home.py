@@ -4,7 +4,7 @@ import logging
 from main.bot import Chatbot
 import base64
 
-with open("src/style.css") as f:
+with open("style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Logging configuration
@@ -57,7 +57,7 @@ def get_img_as_base64(file):
         data = f.read()
     return base64.b64encode(data).decode()
 
-img = get_img_as_base64("src/image.jpg")
+img = get_img_as_base64("image.jpg")
 
 
 st.markdown(
