@@ -3,6 +3,7 @@ import numpy as np
 import logging
 import json
 import os
+from langchain.vectorstores import FAISS
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -11,9 +12,10 @@ class DatabaseManager:
     def __init__(self, dimension=768, db_file='user_data.json'):
         # Initializes the FAISS index for similarity search
         self.dimension = dimension
-        self.index = faiss.IndexFlatL2(dimension)  # Index based on L2 distance
+        self.index = FAISS(dimension=dimension)  # Index based on L2 distance
         self.user_data = {}  # Dictionary to store user preferences and history
         self.db_file = db_file
+        self.load_user_data()
 
         # Load data from JSON file if it exists
         self.load_user_data()

@@ -3,6 +3,8 @@ import logging
 from groq import Groq
 from utils.embedding import create_embedding
 from main.db import DatabaseManager
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
 from dotenv import load_dotenv, find_dotenv
 
 # Logging configuration
@@ -18,8 +20,6 @@ class Chatbot:
         self.logger.setLevel(logging.DEBUG)  # Only this class displays DEBUG logs
         self.user_id = user_id
         self.db_manager = DatabaseManager()
-
-        # Initialize the Groq client
         self.client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
         # Load user preferences (e.g., response tone)
@@ -42,18 +42,14 @@ class Chatbot:
         return response
 
     def verify_truth(self, statement):
+
         try:
-            prompt = f"Is the statement '{statement}' correct? Answer 'Yes' or 'No'."
-            response = self.client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="mixtral-8x7b-32768"
-            )
+            # Configurar a prompt para verificação
+            prompt_template = PromptTemplate(input_variables=["statement"], template="Is the statement '{statement}' correct? Answer 'Yes' or 'No'.")
+            chain = LLMChain(llm=self.client, prompt=prompt_template)
 
-            # Detailed log of the response to understand the format
-            response_content = response.choices[0].message.content.strip().lower()
-            logging.debug(f"API response for '{statement}': '{response_content}'")
-
-            # Check if the response contains "yes" to return True
+            response = chain.run(statement=statement)
+            response_content = response.lower().strip()
             is_true = "yes" in response_content
             logging.info(f"Truth verification for statement '{statement}': {is_true}")
 
@@ -63,13 +59,14 @@ class Chatbot:
             return None  # Use None to differentiate an error from a false response
 
     def generate_response(self, user_input, tone):
+
         try:
-            prompt = f"Respond in a {'formal' if tone == 'formal' else 'informal'} manner: {user_input}"
-            chat_completion = self.client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="mixtral-8x7b-32768"
-            )
-            return chat_completion.choices[0].message.content
+            
+            prompt_template = PromptTemplate(input_variables=["user_input", "tone"], template="Respond in a {tone} manner: {user_input}")
+            chain = LLMChain(llm=self.client, prompt=prompt_template)
+
+            response = chain.run(user_input=user_input, tone="formal" if tone == "formal" else "informal")
+            return response
         except Exception as e:
             logging.error(f"Error generating response: {e}")
             return "Sorry, there was an error trying to access Groq."

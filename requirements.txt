@@ -5,6 +5,5 @@ python-dotenv
 faiss-cpu
 groq
 torch
-torchvision
-torchaudio
 transformers
+langchain 
