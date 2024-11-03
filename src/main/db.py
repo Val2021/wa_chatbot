@@ -1,62 +1,83 @@
-import faiss
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import VectorParams
 import numpy as np
 import logging
-import json
-import os
-from langchain.vectorstores import FAISS
+from uuid import uuid4
+from datetime import datetime
+
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class DatabaseManager:
-    def __init__(self, dimension=768, db_file='user_data.json'):
-        # Initializes the FAISS index for similarity search
-        self.dimension = dimension
-        self.index = FAISS(dimension=dimension)  # Index based on L2 distance
-        self.user_data = {}  # Dictionary to store user preferences and history
-        self.db_file = db_file
-        self.load_user_data()
 
-        # Load data from JSON file if it exists
-        self.load_user_data()
+    def __init__(self):
 
-        logging.info("DatabaseManager initialized with FAISS index.")
+        # Connect to Qdrant
+        self.client = QdrantClient(url="http://localhost:6333")
 
-    def load_user_data(self):
-        if os.path.exists(self.db_file):
-            with open(self.db_file, 'r') as f:
-                self.user_data = json.load(f)
-            logging.info("User data loaded from JSON file.")
+        # Initialize the collection for storing user data
+        self.collection_name = "user_data"
 
-    def save_user_data(self):
-        with open(self.db_file, 'w') as f:
-            json.dump(self.user_data, f)
-        logging.info("User data saved to JSON file.")
+        # Vector configurations
+        vectors_config = VectorParams(size=768, distance="Cosine")  # Adjust size and distance metric as needed
 
-    def store_true_statement(self, user_id, statement, embedding):
-        embedding = np.array(embedding).astype("float32").reshape(1, -1)
-        if embedding.shape[1] != self.dimension:
-            raise ValueError("Embedding dimension incompatible with FAISS index.")
+        # Create or recreate the collection
+        self.client.recreate_collection(
+            collection_name=self.collection_name,
+            vectors_config=vectors_config
+        )
 
-        if user_id not in self.user_data:
-            self.user_data[user_id] = {"statements": [], "embeddings": [], "preferences": {}}
+    def get_last_tone(self, user_id):
 
-        self.user_data[user_id]["statements"].append(statement)
-        #self.user_data[user_id]["embeddings"].append(embedding)
-        self.user_data[user_id]["embeddings"].append(embedding.tolist())  # Convert  to list
-        self.index.add(embedding)
-        self.save_user_data()  # Save after each storage
-        logging.info(f"Stored true statement for user {user_id}: {statement}")
+        logging.info(f"Retrieving last tone for user: {user_id}")
 
-    def load_user_preferences(self, user_id):
-        preferences = self.user_data.get(user_id, {}).get("preferences", {})
-        logging.debug(f"Loaded preferences for user {user_id}: {preferences}")
-        return preferences
+        result = self.client.search(
+            collection_name=self.collection_name,
+            query_vector=np.zeros(768).tolist(),  # Adjust query vector as necessary
+            limit=1  # Limit the search to 1 result
+        )
 
-    def update_user_preferences(self, user_id, preferences):
-        if user_id not in self.user_data:
-            self.user_data[user_id] = {"statements": [], "embeddings": [], "preferences": {}}
+        if result and len(result) > 0:
+            return result[0].payload.get("tone", "formal")  # Return the tone or "formal" as default
 
-        self.user_data[user_id]["preferences"].update(preferences)
-        self.save_user_data()  # Save after each update
-        logging.info(f"Updated preferences for user {user_id}: {preferences}")
+        logging.warning(f"No previous tone found for user: {user_id}. Defaulting to 'formal'.")
+        return "formal"  # Default return if no tone found
+
+    def store_interaction(self, user_id, text, embedding, tone, response=None):
+
+        logging.info(f"Storing interaction for user: {user_id}")
+
+        point = {
+            "id": str(uuid4()),  # Generate a UUID and convert to string
+            "vector": embedding,
+            "payload": {
+                "user_id": user_id,
+                "input": text,
+                "tone": tone,
+                "response": response,
+                "timestamp": datetime.utcnow().isoformat(),  # Store the timestamp in UTC format
+            },
+        }
+
+        try:
+            self.client.upsert(collection_name=self.collection_name, points=[point])
+            logging.info(f"Interaction stored successfully for user: {user_id}.")
+        except Exception as e:
+            logging.error(f"Error storing interaction in Qdrant: {e}")
+
+    def retrieve_history(self, user_id):
+
+        logging.info(f"Retrieving history for user: {user_id}")
+
+        result = self.client.search(
+            collection_name=self.collection_name,
+            query_vector=np.zeros(768).tolist(),
+            limit=10,
+            filter={"must": [{"key": "user_id", "match": {"value": user_id}}]}
+        )
+
+        history = [{"text": hit.payload["input"], "tone": hit.payload["tone"]} for hit in result]
+        logging.info(f"Retrieved {len(history)} interactions for user: {user_id}.")
+        return history
