@@ -2,8 +2,7 @@ streamlit
 requests
 pydantic
 python-dotenv
-faiss-cpu
 groq
-torch
 transformers
-langchain 
+langchain
+qdrant-client
