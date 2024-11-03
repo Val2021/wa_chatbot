@@ -1,11 +1,10 @@
 import os
 import logging
-from groq import Groq
 from utils.embedding import create_embedding
 from main.db import DatabaseManager
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
 from dotenv import load_dotenv, find_dotenv
+import requests
+import uuid
 
 # Logging configuration
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -15,64 +14,111 @@ load_dotenv(find_dotenv(), override=True)
 
 class Chatbot:
     def __init__(self, user_id):
-        # Set up a specific logger for this class
-        self.logger = logging.getLogger("Chatbot")
-        self.logger.setLevel(logging.DEBUG)  # Only this class displays DEBUG logs
-        self.user_id = user_id
-        self.db_manager = DatabaseManager()
-        self.client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-        # Load user preferences (e.g., response tone)
-        user_data = self.db_manager.load_user_preferences(self.user_id)
-        self.response_tone = user_data.get("response_tone", "informal")  # default to informal
-        logging.info(f"User {self.user_id} loaded with response tone preference: {self.response_tone}")
+        self.logger = logging.getLogger("Chatbot")
+        self.db_manager = DatabaseManager()
+        if not isinstance(user_id, int):
+            try:
+                # Try to convert to UUID
+                self.user_id = uuid.UUID(user_id)
+            except ValueError:
+                # Generate a random UUID if user_id is not a valid UUID
+                self.user_id = uuid.uuid4()
+        else:
+            self.user_id = user_id
+
+    def call_llm(self, prompt):
+        """
+        Calls the language model API with the given prompt.
+
+        :param prompt: The prompt to send to the language model.
+        :return: The response text from the language model.
+        """
+        url = "https://api.groq.com/v1/completions"  # Example endpoint for Groq, adjust as needed
+        headers = {
+            "Authorization": f"Bearer {os.environ['GROQ_API_KEY']}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "prompt": prompt,
+            "max_tokens": 100,  # Adjust as needed
+            "temperature": 0.7
+        }
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            return data.get("choices", [{}])[0].get("text", "").strip()
+        except requests.RequestException as e:
+            self.logger.error(f"Error calling the Groq LLM: {e}")
+            return "Sorry, there was an error accessing the LLM."
+
+    def get_tone_from_llm(self, text):
+        """
+        Calls the language model to identify the tone based on the text.
+
+        :param text: The input text to analyze.
+        :return: A dictionary containing the identified tone.
+        """
+        prompt = f"Identify the tone of the following text: '{text}'. Respond only with 'formal' or 'informal'."
+        response = self.call_llm(prompt)
+
+        # Analyze the tone from the LLM's response, defaulting to "formal" if not identified
+        tone = "informal" if "informal" in response.lower() else "formal"
+        return {"tone": tone}
 
     def process_input(self, user_input):
-        # Check and store only if the statement is true
-        if self.verify_truth(user_input):
-            embedding = create_embedding(user_input)
-            print(f"Generated embedding shape: {len(embedding)}")  # Deve imprimir 768
-            self.db_manager.store_true_statement(self.user_id, user_input, embedding)
-            logging.info(f"Stored true statement for user {self.user_id}: {user_input}")
-        else:
-            logging.info(f"Statement '{user_input}' deemed false and not stored for user {self.user_id}")
 
-        # Respond to the user considering the response tone
-        response = self.generate_response(user_input, self.response_tone)
+        # Identify the tone using the LLM
+        tone = self.identify_tone(user_input)
+
+        # Create embedding and store it with tone in Qdrant
+        embedding = create_embedding(user_input)
+        self.db_manager.store_interaction(self.user_id, user_input, embedding, tone)
+
+        # Generate the response
+        response_text = self.generate_response(user_input)
+        return response_text
+
+    def check_fact(self, statement):
+
+        # Create a prompt for fact-checking
+        prompt = f"Verify whether the following statement is true or false: '{statement}'. Explain your answer."
+
+        # Call the LLM to check the veracity of the statement
+        response = self.call_llm(prompt)
+
+        # Extract the verification result (true/false) and explanation
+        veracity = "true" if "true" in response.lower() else "false" if "false" in response.lower() else "uncertain"
+
+        # Store in Qdrant for historical tracking
+        embedding = create_embedding(statement)
+        self.db_manager.store_fact(self.user_id, statement, embedding, veracity, response)
+
+        return {"veracity": veracity, "explanation": response}
+
+
+    def generate_response(self, user_input):
+
+         # Retrieve the most recent stored tone (or use current tone if new)
+        tone = self.db_manager.get_last_tone(self.user_id) or "formal"
+
+        # Create the prompt considering the tone and context
+        prompt = f"Respond in a {tone} manner. User's question: {user_input}"
+
+        # Generate response using the LLM, passing the tone as part of the context
+        response = self.call_llm(prompt)
+
+        # Store the response and context in Qdrant
+        embedding = create_embedding(user_input)
+        self.db_manager.store_interaction(self.user_id, user_input, embedding, tone, response)
+
         return response
 
-    def verify_truth(self, statement):
 
-        try:
-            # Configurar a prompt para verificação
-            prompt_template = PromptTemplate(input_variables=["statement"], template="Is the statement '{statement}' correct? Answer 'Yes' or 'No'.")
-            chain = LLMChain(llm=self.client, prompt=prompt_template)
+    def identify_tone(self, user_input):
 
-            response = chain.run(statement=statement)
-            response_content = response.lower().strip()
-            is_true = "yes" in response_content
-            logging.info(f"Truth verification for statement '{statement}': {is_true}")
-
-            return is_true
-        except Exception as e:
-            logging.error(f"Error verifying truth for statement '{statement}': {e}")
-            return None  # Use None to differentiate an error from a false response
-
-    def generate_response(self, user_input, tone):
-
-        try:
-            
-            prompt_template = PromptTemplate(input_variables=["user_input", "tone"], template="Respond in a {tone} manner: {user_input}")
-            chain = LLMChain(llm=self.client, prompt=prompt_template)
-
-            response = chain.run(user_input=user_input, tone="formal" if tone == "formal" else "informal")
-            return response
-        except Exception as e:
-            logging.error(f"Error generating response: {e}")
-            return "Sorry, there was an error trying to access Groq."
-
-    def set_response_tone(self, tone):
         # Update and store the user's response tone preference
-        self.response_tone = tone
-        self.db_manager.update_user_preferences(self.user_id, {"response_tone": tone})
-        logging.info(f"Updated response tone preference for user {self.user_id} to: {tone}")
+        response = self.get_tone_from_llm(user_input)
+        tone = response.get("tone", "formal")  # Default return is "formal" if tone is not identified
+        return tone
