@@ -75,7 +75,7 @@ class DatabaseManager:
             collection_name=self.collection_name,
             query_vector=np.zeros(768).tolist(),
             limit=10,
-            filter={"must": [{"key": "user_id", "match": {"value": user_id}}]}
+            query_filter={"must": [{"key": "user_id", "match": {"value": user_id}}]}
         )
 
         history = [{"text": hit.payload["input"], "tone": hit.payload["tone"]} for hit in result]
