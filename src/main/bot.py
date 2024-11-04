@@ -106,6 +106,13 @@ class Chatbot:
         # Create the prompt considering the tone and context
         prompt = f"Respond in a {tone} manner. User's question: {user_input}"
 
+         # Retrieve user history and add to prompt if needed
+        history = self.get_user_history()
+        
+        if history:
+            history_summary = " ".join([f"Previous: {item['text']}" for item in history])
+            prompt += f" Context from previous interactions: {history_summary}"
+
         # Generate response using the LLM, passing the tone as part of the context
         response = self.call_llm(prompt)
 
@@ -122,3 +129,15 @@ class Chatbot:
         response = self.get_tone_from_llm(user_input)
         tone = response.get("tone", "formal")  # Default return is "formal" if tone is not identified
         return tone
+
+    def get_user_history(self):
+        """
+        Retrieve the history of interactions for the current user.
+        :return: A list of dictionaries with 'text' and 'tone' of previous interactions.
+        """
+        history = self.db_manager.retrieve_history(self.user_id)
+        if history:
+            self.logger.info(f"User history retrieved: {history}")
+        else:
+            self.logger.info("No previous interactions found for user.")
+        return history
