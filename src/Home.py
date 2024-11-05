@@ -12,47 +12,53 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def main():
 
+    """
+    Main function to run the Streamlit interface for the intelligent chat application.
 
-    # Login screen
-    if 'user_id' not in st.session_state:
-        st.markdown('<h1 class="title">Welcome to our space!</h1>', unsafe_allow_html=True)
-        username = st.text_input("Username:")
-        if st.button("Log In"):
-            st.session_state['user_id'] = username
-            st.session_state['session_id'] = st.session_state.get('session_id', 0) + 1
-            st.success(f"Welcome, {username}.Click again and have fun!")
-            logging.info(f"User {username} logged in with session ID {st.session_state['session_id']}")
-            st.markdown('</div>', unsafe_allow_html=True)
-        return
+    It initializes the chatbot, manages the conversation history, and handles user input.
+    """
 
-    user_id = st.session_state['user_id']
-    chatbot = Chatbot(user_id)
+    st.markdown('<h1 class="title">Shall We Chat!</h1>', unsafe_allow_html=True)
 
-    # # #Response tone selection
-    st.markdown('<h1 class="title">How can I assist you today!</h1>', unsafe_allow_html=True)
-    tone_choice = st.radio("Select response tone:", ["formal", "informal"], index=0 if chatbot.response_tone == "informal" else 1)
-    if tone_choice != chatbot.response_tone:
-        chatbot.set_response_tone(tone_choice)
-        st.success(f"Tone preference '{tone_choice}' saved.")
-        logging.info(f"User {user_id} set response tone to: {tone_choice}")
+    # Initialize the chatbot and the conversation history
+    user_id = st.session_state.get('user_id', 'guest')
+    logging.info(f"Initializing chatbot for user: {user_id}")
+    chatbot = Chatbot(user_id=user_id)
 
-    # Request user input
-    user_input = st.text_input("Let's chat!")
+    if 'history' not in st.session_state:
+        st.session_state['history'] = []
+        logging.info("Conversation history initialized.")
+
+    # Display conversation history
+    logging.info("Displaying conversation history.")
+    for interaction in st.session_state['history']:
+        st.write(f"**You:** {interaction['user_input']}")
+        st.write(f"**Chat:** {interaction['response']}")
+
+    # User input
+    user_input = st.text_input("Type your question:")
     if user_input:
+        logging.info(f"User typed: {user_input}")
         response = chatbot.process_input(user_input)
-        st.write(response)
-        logging.info(f"Processed input for user {user_id}: {user_input}")
+        st.session_state['history'].append({"user_input": user_input, "response": response})
+        st.session_state.query_params = {'user_input': user_input}
 
-    # Logout button
-    if st.button("Log Out"):
-        # Clear session state
-        st.session_state.clear()
-        st.success("Are you leaving? Click again and see you later!")
-        logging.info(f"User {user_id} logged out.")
-        st.stop()
-    st.markdown('</div>', unsafe_allow_html=True)
+        logging.info(f"Chatbot response: {response}")
+
+        # Display chatbot response on the screen
+        st.write(response)
+
 
 def get_img_as_base64(file):
+    """
+    Convert an image file to a base64 encoded string for use as a background image.
+
+    Args:
+        file (str): The path to the image file.
+
+    Returns:
+        str: The base64 encoded string representation of the image.
+    """
     with open(file,'rb') as f:
         data = f.read()
     return base64.b64encode(data).decode()

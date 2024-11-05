@@ -6,3 +6,4 @@ groq
 transformers
 langchain
 qdrant-client
+langchain-groq

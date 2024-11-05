@@ -1,10 +1,10 @@
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams
-import numpy as np
 import logging
 from uuid import uuid4
 from datetime import datetime
+import uuid
 
 
 # Logging configuration
@@ -13,6 +13,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 class DatabaseManager:
 
     def __init__(self):
+
+        """
+        Initialize the DatabaseManager, connecting to Qdrant and setting up the collection.
+        """
 
         # Connect to Qdrant
         self.client = QdrantClient(url="http://localhost:6333")
@@ -29,31 +33,28 @@ class DatabaseManager:
             vectors_config=vectors_config
         )
 
-    def get_last_tone(self, user_id):
 
-        logging.info(f"Retrieving last tone for user: {user_id}")
 
-        result = self.client.search(
-            collection_name=self.collection_name,
-            query_vector=np.zeros(768).tolist(),  # Adjust query vector as necessary
-            limit=1  # Limit the search to 1 result
-        )
+    def store_interaction(self,text, embedding, tone, response=None):
 
-        if result and len(result) > 0:
-            return result[0].payload.get("tone", "formal")  # Return the tone or "formal" as default
+        """
+        Store a user's interaction in the database.
 
-        logging.warning(f"No previous tone found for user: {user_id}. Defaulting to 'formal'.")
-        return "formal"  # Default return if no tone found
+        Args:
+            user_id (str): The ID of the user.
+            text (str): The input text from the user.
+            embedding (list): The embedding vector for the input text.
+            tone (str): The tone of the interaction.
+            response (str, optional): The chatbot's response. Defaults to None.
+        """
 
-    def store_interaction(self, user_id, text, embedding, tone, response=None):
-
-        logging.info(f"Storing interaction for user: {user_id}")
+        logging.info(f"Storing interaction for user")
 
         point = {
             "id": str(uuid4()),  # Generate a UUID and convert to string
             "vector": embedding,
             "payload": {
-                "user_id": user_id,
+                # "user_id": user_id,
                 "input": text,
                 "tone": tone,
                 "response": response,
@@ -63,21 +64,6 @@ class DatabaseManager:
 
         try:
             self.client.upsert(collection_name=self.collection_name, points=[point])
-            logging.info(f"Interaction stored successfully for user: {user_id}.")
+            logging.info(f"Interaction stored successfully for user.")
         except Exception as e:
             logging.error(f"Error storing interaction in Qdrant: {e}")
-
-    def retrieve_history(self, user_id):
-
-        logging.info(f"Retrieving history for user: {user_id}")
-
-        result = self.client.search(
-            collection_name=self.collection_name,
-            query_vector=np.zeros(768).tolist(),
-            limit=10,
-            query_filter={"must": [{"key": "user_id", "match": {"value": user_id}}]}
-        )
-
-        history = [{"text": hit.payload["input"], "tone": hit.payload["tone"]} for hit in result]
-        logging.info(f"Retrieved {len(history)} interactions for user: {user_id}.")
-        return history

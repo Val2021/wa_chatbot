@@ -3,8 +3,13 @@ import logging
 from utils.embedding import create_embedding
 from main.db import DatabaseManager
 from dotenv import load_dotenv, find_dotenv
-import requests
-import uuid
+from langchain_groq import ChatGroq
+from langchain_core.messages import HumanMessage
+from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
+from langchain_core.prompts import MessagesPlaceholder,ChatPromptTemplate
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+
 
 # Logging configuration
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -12,132 +17,148 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 # Load environment variables
 load_dotenv(find_dotenv(), override=True)
 
-class Chatbot:
-    def __init__(self, user_id):
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_API_KEY"]
 
+
+
+class Chatbot():
+
+    def __init__(self,user_id):
+
+        """
+        Initialize the Chatbot instance, configuring LangChain with GroqLLM and setting up memory.
+
+        Args:
+            user_id (str): User ID as a string.
+        """
+        self.user_id = user_id
         self.logger = logging.getLogger("Chatbot")
         self.db_manager = DatabaseManager()
-        if not isinstance(user_id, int):
-            try:
-                # Try to convert to UUID
-                self.user_id = uuid.UUID(user_id)
-            except ValueError:
-                # Generate a random UUID if user_id is not a valid UUID
-                self.user_id = uuid.uuid4()
-        else:
-            self.user_id = user_id
+        self.client = ChatGroq(model="llama3-8b-8192")
+        self.store = {}
 
-    def call_llm(self, prompt):
+    def get_session_history(self,session_id: str) -> BaseChatMessageHistory:
+            if session_id not in self.store:
+                self.store[session_id] = InMemoryChatMessageHistory()
+            return self.store[session_id]
+
+    def identify_tone(self, user_input):
+
         """
-        Calls the language model API with the given prompt.
+        Identifies the tone of the user input.
 
-        :param prompt: The prompt to send to the language model.
-        :return: The response text from the language model.
+        :param user_input: The user's input text.
+        :return: The identified tone ('formal' or 'informal').
         """
-        url = "https://api.groq.com/v1/completions"  # Example endpoint for Groq, adjust as needed
-        headers = {
-            "Authorization": f"Bearer {os.environ['GROQ_API_KEY']}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "prompt": prompt,
-            "max_tokens": 100,  # Adjust as needed
-            "temperature": 0.7
-        }
-        try:
-            response = requests.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            data = response.json()
-            return data.get("choices", [{}])[0].get("text", "").strip()
-        except requests.RequestException as e:
-            self.logger.error(f"Error calling the Groq LLM: {e}")
-            return "Sorry, there was an error accessing the LLM."
 
-    def get_tone_from_llm(self, text):
+        # Update and store the user's response tone preference
+
+        statement = f"Identify the tone of this text: '{user_input}'. Return 'formal' or 'informal'."
+        mensage = [HumanMessage(content=statement)]
+        config = {"configurable": {"thread_id": "abc123"}}
+        response = self.client.invoke(mensage,config)
+
+        tone_value = response.content.lower() if hasattr(response, "content") else ""
+
+        tone = "informal" if "informal" in tone_value else "formal"
+        self.logger.info(f"Tone returned: {tone}")
+        return tone
+
+    def generate_response(self, user_input):
+
         """
-        Calls the language model to identify the tone based on the text.
+        Generates a response based on the user's input and the identified tone.
 
-        :param text: The input text to analyze.
-        :return: A dictionary containing the identified tone.
+        :param user_input: The user's input text.
+        :return: The generated response text.
         """
-        prompt = f"Identify the tone of the following text: '{text}'. Respond only with 'formal' or 'informal'."
-        response = self.call_llm(prompt)
 
-        # Analyze the tone from the LLM's response, defaulting to "formal" if not identified
-        tone = "informal" if "informal" in response.lower() else "formal"
-        return {"tone": tone}
+        tone = self.identify_tone(user_input)
+
+        # Create the prompt considering the tone and context
+        message = f"Respond in a {tone} manner. User's question: {user_input}"
+
+        session_id = "firstchat"
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "You are a helpful assistant. Answer all questions to the best of your ability."),
+            MessagesPlaceholder(variable_name="messages"),
+        ])
+
+        chain = prompt | self.client
+
+        model_with_memory=RunnableWithMessageHistory(chain,self.get_session_history)
+
+        config = {"configurable": {"session_id": session_id}}
+
+
+        response = model_with_memory.invoke([HumanMessage(content=message)],config=config).content
+
+        self.logger.info(f"Generated response: {response}")
+        self.logger.info(f"Generated  store: {self.get_session_history(session_id)}")
+        self.logger.info(f"Session History: {self.store}")
+
+        return response
 
     def process_input(self, user_input):
+
+        """
+        Processes the user's input, identifying tone and generating a response.
+
+        :param user_input: The user's input text.
+        :return: The generated response text.
+        """
+
+        #Checks the veracity of a statement
+        self.check_fact(user_input)
 
         # Identify the tone using the LLM
         tone = self.identify_tone(user_input)
 
-        # Create embedding and store it with tone in Qdrant
-        embedding = create_embedding(user_input)
-        self.db_manager.store_interaction(self.user_id, user_input, embedding, tone)
+        # Generate response with LangChain
+        response_text = self.generate_response(user_input=user_input)
 
-        # Generate the response
-        response_text = self.generate_response(user_input)
         return response_text
 
+
     def check_fact(self, statement):
+
+        """
+        Checks the veracity of a statement using the LLM.
+
+        :param statement: The statement to verify.
+        :return: A dictionary with the veracity and explanation.
+        """
 
         # Create a prompt for fact-checking
         prompt = f"Verify whether the following statement is true or false: '{statement}'. Explain your answer."
 
         # Call the LLM to check the veracity of the statement
-        response = self.call_llm(prompt)
+
+        mensage = [HumanMessage(content=prompt)]
+        config = {"configurable": {"thread_id": "abc123"}}
+        response = self.client.invoke(mensage,config)
+        self.logger.info(f"response invoke: {response.content}")
+        logging.info(f"response for check veracity: {response.content}")
+
+        # Identify the tone using the LLM
+        tone = self.identify_tone(statement)
 
         # Extract the verification result (true/false) and explanation
-        veracity = "true" if "true" in response.lower() else "false" if "false" in response.lower() else "uncertain"
 
-        # Store in Qdrant for historical tracking
-        embedding = create_embedding(statement)
-        self.db_manager.store_fact(self.user_id, statement, embedding, veracity, response)
+        veracity_value = response.content.lower() if hasattr(response, "content") else ""
+        self.logger.info(f"Response veracity: {veracity_value}")
+        veracity = "true" if "true" in veracity_value else "false" if "false" in veracity_value else "uncertain"
+        # Log the veracity result
+        logging.info(f"Veracity: {veracity}")
+
+        # Store in Qdrant for historical tracking only if veracity is true
+        if veracity == "true":
+            embedding = create_embedding(statement)
+            self.db_manager.store_interaction(statement, embedding, tone, response=response)
+            logging.info("Interaction saved in the database.")
+        else:
+            logging.info("Interaction not saved in the database due to veracity being false or uncertain.")
 
         return {"veracity": veracity, "explanation": response}
-
-
-    def generate_response(self, user_input):
-
-         # Retrieve the most recent stored tone (or use current tone if new)
-        tone = self.db_manager.get_last_tone(self.user_id) or "formal"
-
-        # Create the prompt considering the tone and context
-        prompt = f"Respond in a {tone} manner. User's question: {user_input}"
-
-         # Retrieve user history and add to prompt if needed
-        history = self.get_user_history()
-        
-        if history:
-            history_summary = " ".join([f"Previous: {item['text']}" for item in history])
-            prompt += f" Context from previous interactions: {history_summary}"
-
-        # Generate response using the LLM, passing the tone as part of the context
-        response = self.call_llm(prompt)
-
-        # Store the response and context in Qdrant
-        embedding = create_embedding(user_input)
-        self.db_manager.store_interaction(self.user_id, user_input, embedding, tone, response)
-
-        return response
-
-
-    def identify_tone(self, user_input):
-
-        # Update and store the user's response tone preference
-        response = self.get_tone_from_llm(user_input)
-        tone = response.get("tone", "formal")  # Default return is "formal" if tone is not identified
-        return tone
-
-    def get_user_history(self):
-        """
-        Retrieve the history of interactions for the current user.
-        :return: A list of dictionaries with 'text' and 'tone' of previous interactions.
-        """
-        history = self.db_manager.retrieve_history(self.user_id)
-        if history:
-            self.logger.info(f"User history retrieved: {history}")
-        else:
-            self.logger.info("No previous interactions found for user.")
-        return history
