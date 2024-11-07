@@ -41,15 +41,16 @@ def identify_tone(user_input):
 
     # Update and store the user's response tone preference
 
-    statement = f"Identify the tone of this text: '{user_input}'. Return 'formal' or 'informal'."
+    statement = f"Identify the tone of this text. Return 'informal' only if the text contains expressions that indicate a more casual conversation, such as 'bro,' 'man,' etc.: '{user_input}'. Return 'formal' or 'informal'."
     mensage = [HumanMessage(content=statement)]
     config = {"configurable": {"thread_id": "abc123"}}
     response = client.invoke(mensage,config)
 
     tone_value = response.content.lower() if hasattr(response, "content") else ""
+    logger.info(f"tone_value returned: {response}")
 
     tone = "informal" if "informal" in tone_value else "formal"
-    logger.info(f"Tone returned: {tone}")
+    logger.info(f"tone returned: {tone}")
     return tone
 
 def generate_response(user_input):
