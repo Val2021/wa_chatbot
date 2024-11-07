@@ -4,10 +4,7 @@ from qdrant_client.models import VectorParams
 import logging
 from uuid import uuid4
 from datetime import datetime
-import uuid
 
-
-# Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class DatabaseManager:
@@ -54,7 +51,6 @@ class DatabaseManager:
             "id": str(uuid4()),  # Generate a UUID and convert to string
             "vector": embedding,
             "payload": {
-                # "user_id": user_id,
                 "input": text,
                 "tone": tone,
                 "response": response,

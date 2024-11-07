@@ -1,14 +1,14 @@
 
 import streamlit as st
 import logging
-from main.bot import Chatbot
+from main.bot import process_input
 import base64
 
 with open("src/style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 def main():
 
@@ -20,32 +20,28 @@ def main():
 
     st.markdown('<h1 class="title">Shall We Chat!</h1>', unsafe_allow_html=True)
 
-    # Initialize the chatbot and the conversation history
     user_id = st.session_state.get('user_id', 'guest')
     logging.info(f"Initializing chatbot for user: {user_id}")
-    chatbot = Chatbot(user_id=user_id)
+
 
     if 'history' not in st.session_state:
         st.session_state['history'] = []
         logging.info("Conversation history initialized.")
 
-    # Display conversation history
     logging.info("Displaying conversation history.")
     for interaction in st.session_state['history']:
         st.write(f"**You:** {interaction['user_input']}")
         st.write(f"**Chat:** {interaction['response']}")
 
-    # User input
     user_input = st.text_input("Type your question:")
     if user_input:
         logging.info(f"User typed: {user_input}")
-        response = chatbot.process_input(user_input)
+        response = process_input(user_input)
         st.session_state['history'].append({"user_input": user_input, "response": response})
         st.session_state.query_params = {'user_input': user_input}
 
         logging.info(f"Chatbot response: {response}")
 
-        # Display chatbot response on the screen
         st.write(response)
 
 
