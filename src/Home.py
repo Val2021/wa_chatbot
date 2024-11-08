@@ -18,7 +18,7 @@ def main():
     It initializes the chatbot, manages the conversation history, and handles user input.
     """
 
-    st.markdown('<h1 class="title">Shall We Chat!</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="titlehead">Shall We Chat!</h1>', unsafe_allow_html=True)
 
     user_id = st.session_state.get('user_id', 'guest')
     logging.info(f"Initializing chatbot for user: {user_id}")

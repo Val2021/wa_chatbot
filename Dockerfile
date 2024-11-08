@@ -15,4 +15,4 @@ COPY .env /src/.env
 
 EXPOSE 8501
 
-CMD ["streamlit", "run", "Home.py"]
+CMD ["streamlit", "run", "src/Home.py"]

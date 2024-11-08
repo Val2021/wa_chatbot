@@ -63,7 +63,13 @@
 .title {
   font-size: 2em;
   color: #000000;
-  margin-right: -2%;
+  margin-right: 40%;
+}
+
+.titlehead {
+  font-size: 2em;
+  color: #000000;
+  margin-right: 40%;
 }
 
 .subheader, .text {
@@ -75,6 +81,11 @@
   padding-right: 1rem;
   margin-left: 80%;
   height: 50%;
+}
+
+.st-emotion-cache-1y5f4eg p {
+  word-break: break-word;
+  margin-right: 40%;
 }
 
 .st-emotion-cache-bm2z3a {
@@ -135,6 +146,7 @@ b, strong {
 
 [data-testid="stMarkdown"] {
   width: 60%;
+  color: #000000;
 }
 
 .st-emotion-cache-nok2kl {

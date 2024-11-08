@@ -7,3 +7,5 @@ transformers
 langchain
 qdrant-client
 langchain-groq
+tensorflow
+tf-keras

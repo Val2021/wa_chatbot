@@ -4,6 +4,7 @@ from qdrant_client.models import VectorParams
 import logging
 from uuid import uuid4
 from datetime import datetime
+import os
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -16,7 +17,9 @@ class DatabaseManager:
         """
 
         # Connect to Qdrant
-        self.client = QdrantClient(url="http://localhost:6333")
+        # self.client = QdrantClient(url="http://localhost:6333")
+        qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
+        self.client = QdrantClient(url=qdrant_url)
 
         # Initialize the collection for storing user data
         self.collection_name = "user_data"
