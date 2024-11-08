@@ -41,7 +41,7 @@ def identify_tone(user_input):
 
     # Update and store the user's response tone preference
 
-    statement = f"Identify the tone of this text. Return 'informal' only if the text contains expressions that indicate a more casual conversation, such as 'bro,' 'man,' etc.: '{user_input}'. Return 'formal' or 'informal'."
+    statement = f"Identify the tone of this text. Return informal tone only if the text contains expressions that indicate a more casual conversation, such as 'bro,' 'man,' etc.: '{user_input}'. Return 'formal' or 'informal'."
     mensage = [HumanMessage(content=statement)]
     config = {"configurable": {"thread_id": "abc123"}}
     response = client.invoke(mensage,config)
@@ -115,7 +115,7 @@ def check_fact(statement):
     :return: A dictionary with the veracity and explanation.
     """
 
-    prompt = f"Verify whether the following statement is true or false: '{statement}'. Explain your answer."
+    prompt = f"Verify whether the following statement is true or false: '{statement}'"
 
     mensage = [HumanMessage(content=prompt)]
     config = {"configurable": {"thread_id": "abc123"}}
