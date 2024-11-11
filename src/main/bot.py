@@ -41,16 +41,23 @@ def identify_tone(user_input):
 
     # Update and store the user's response tone preference
 
-    statement = f"Identify the tone of this text. Return informal tone only if the text contains expressions that indicate a more casual conversation, such as 'bro,' 'man,' etc.: '{user_input}'. Return 'formal' or 'informal'."
+    statement = (
+        f"Analyze the tone of this text and classify it strictly as either 'formal' or 'informal'. "
+        f"If there are no clear indications of informality (e.g., words like bro, man, slang, or emojis), "
+        f"always default to formal. Text: '{user_input}'. Return only the word 'formal' or 'informal'."
+    )
+
     mensage = [HumanMessage(content=statement)]
     config = {"configurable": {"thread_id": "abc123"}}
     response = client.invoke(mensage,config)
+    logger.info(f"Raw response content: {response.content if hasattr(response, 'content') else 'No content'}")
+
 
     tone_value = response.content.lower() if hasattr(response, "content") else ""
-    logger.info(f"tone_value returned: {response}")
-
+    logger.info(f"tone_value returned: {tone_value}")
     tone = "informal" if "informal" in tone_value else "formal"
     logger.info(f"tone returned: {tone}")
+
     return tone
 
 def generate_response(user_input):
@@ -69,7 +76,7 @@ def generate_response(user_input):
     session_id = "firstchat"
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful assistant. Answer all questions to the best of your ability."),
+        ("system", "You are a helpful assistant. Keep your responses brief, clear, and direct."),
         MessagesPlaceholder(variable_name="messages"),
     ])
 
@@ -77,7 +84,7 @@ def generate_response(user_input):
 
     model_with_memory=RunnableWithMessageHistory(chain,get_session_history)
 
-    config = {"configurable": {"session_id": session_id}}
+    config = {"configurable": {"session_id": session_id,"max_tokens": 50}}
 
 
     response = model_with_memory.invoke([HumanMessage(content=message)],config=config).content
